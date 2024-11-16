@@ -64,7 +64,7 @@ for ticker in tickers:
 
         # Skip processing if data is empty
         if data.empty:
-            st.write(f"No data available for {ticker} (market might be closed or ticker invalid).")
+            st.write(f"No data available for {ticker}")
             continue
 
         # Calculate RSI and SMA
@@ -74,7 +74,7 @@ for ticker in tickers:
         # Flag stocks based on criteria
         if data['RSI'].iloc[-1] < rsi_threshold and data['Close'].iloc[-1] > data['SMA'].iloc[-1]:
             flagged_stocks.append({
-                "Ticker": ticker,  # Use original ticker name
+                "Ticker": ticker,
                 "RSI": round(data['RSI'].iloc[-1], 2),
                 "Close": round(data['Close'].iloc[-1], 2),
                 "SMA": round(data['SMA'].iloc[-1], 2),
