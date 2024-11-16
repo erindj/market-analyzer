@@ -5,17 +5,22 @@ import numpy as np
 
 # Function to calculate RSI
 def calculate_rsi(data, window=14):
+    if 'Close' not in data or data['Close'].empty:
+        raise ValueError("Invalid data: 'Close' column missing or empty")
+
     delta = data['Close'].diff()
-    gain = np.where(delta > 0, delta, 0)
-    loss = np.where(delta < 0, -delta, 0)
-    avg_gain = pd.Series(gain, index=data.index).rolling(window=window, min_periods=1).mean()
-    avg_loss = pd.Series(loss, index=data.index).rolling(window=window, min_periods=1).mean()
+    gain = pd.Series(np.where(delta > 0, delta, 0), index=data.index)
+    loss = pd.Series(np.where(delta < 0, -delta, 0), index=data.index)
+    avg_gain = gain.rolling(window=window, min_periods=1).mean()
+    avg_loss = loss.rolling(window=window, min_periods=1).mean()
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
 # Function to calculate SMA
 def calculate_sma(data, window=200):
+    if 'Close' not in data or data['Close'].empty:
+        raise ValueError("Invalid data: 'Close' column missing or empty")
     return data['Close'].rolling(window=window).mean()
 
 # Streamlit app
@@ -45,7 +50,7 @@ for ticker in tickers:
         # Fetch stock data
         data = yf.download(ticker, period="6mo", progress=False)
         if data.empty:
-            raise ValueError(f"No data found for {ticker}")
+            raise ValueError(f"No data available for {ticker}")
 
         # Calculate RSI and SMA
         data['RSI'] = calculate_rsi(data)
