@@ -74,7 +74,7 @@ for ticker in tickers:
         # Flag stocks based on criteria
         if data['RSI'].iloc[-1] < rsi_threshold and data['Close'].iloc[-1] > data['SMA'].iloc[-1]:
             flagged_stocks.append({
-                "Ticker": ticker,
+                "Ticker": ticker,  # Use original ticker name
                 "RSI": round(data['RSI'].iloc[-1], 2),
                 "Close": round(data['Close'].iloc[-1], 2),
                 "SMA": round(data['SMA'].iloc[-1], 2),
