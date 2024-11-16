@@ -8,14 +8,23 @@ def calculate_rsi(data, window=14):
     if 'Close' not in data or data['Close'].empty:
         raise ValueError("Invalid data: 'Close' column missing or empty")
 
-    delta = data['Close'].diff()
-    gain = pd.Series(np.where(delta > 0, delta, 0), index=data.index)
-    loss = pd.Series(np.where(delta < 0, -delta, 0), index=data.index)
-    avg_gain = gain.rolling(window=window, min_periods=1).mean()
-    avg_loss = loss.rolling(window=window, min_periods=1).mean()
+    # Calculate the price differences
+    delta = data['Close'].diff().values.flatten()
+
+    # Separate gains and losses
+    gain = np.where(delta > 0, delta, 0)
+    loss = np.where(delta < 0, -delta, 0)
+
+    # Calculate rolling averages for gain and loss
+    avg_gain = pd.Series(gain).rolling(window=window, min_periods=1).mean()
+    avg_loss = pd.Series(loss).rolling(window=window, min_periods=1).mean()
+
+    # Calculate RSI
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
-    return rsi
+
+    # Return RSI as a Pandas Series with the same index as the original data
+    return pd.Series(rsi, index=data.index)
 
 # Function to calculate SMA
 def calculate_sma(data, window=200):
@@ -78,3 +87,4 @@ if flagged_stocks:
     st.download_button("Download Results", csv, "flagged_stocks.csv", "text/csv")
 else:
     st.write("No stocks matched the criteria.")
+
