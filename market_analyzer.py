@@ -8,22 +8,13 @@ def calculate_rsi(data, window=14):
     if 'Close' not in data or data['Close'].empty:
         raise ValueError("Invalid data: 'Close' column missing or empty")
 
-    # Calculate the price differences
     delta = data['Close'].diff().values.flatten()
-
-    # Separate gains and losses
     gain = np.where(delta > 0, delta, 0)
     loss = np.where(delta < 0, -delta, 0)
-
-    # Calculate rolling averages for gain and loss
     avg_gain = pd.Series(gain).rolling(window=window, min_periods=1).mean()
     avg_loss = pd.Series(loss).rolling(window=window, min_periods=1).mean()
-
-    # Calculate RSI
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
-
-    # Return RSI as a Pandas Series with the same index as the original data
     return pd.Series(rsi, index=data.index)
 
 # Function to calculate SMA
@@ -31,6 +22,10 @@ def calculate_sma(data, window=200):
     if 'Close' not in data or data['Close'].empty:
         raise ValueError("Invalid data: 'Close' column missing or empty")
     return data['Close'].rolling(window=window).mean()
+
+# Preprocess tickers for Yahoo Finance compatibility
+def preprocess_ticker(ticker):
+    return ticker.replace(".B", "-B").replace(".A", "-A")
 
 # Streamlit app
 st.title("Market Analyzer: Stock Screener")
@@ -56,10 +51,13 @@ st.sidebar.write(f"Analyzing {len(tickers)} stocks...")
 flagged_stocks = []
 for ticker in tickers:
     try:
+        # Preprocess ticker
+        formatted_ticker = preprocess_ticker(ticker)
+
         # Fetch stock data
-        data = yf.download(ticker, period="6mo", progress=False)
+        data = yf.download(formatted_ticker, period="6mo", progress=False)
         if data.empty:
-            raise ValueError(f"No data available for {ticker}")
+            raise ValueError(f"No data available for {formatted_ticker}")
 
         # Calculate RSI and SMA
         data['RSI'] = calculate_rsi(data)
@@ -68,7 +66,7 @@ for ticker in tickers:
         # Flag stocks based on criteria
         if data['RSI'].iloc[-1] < rsi_threshold and data['Close'].iloc[-1] > data['SMA'].iloc[-1]:
             flagged_stocks.append({
-                "Ticker": ticker,
+                "Ticker": ticker,  # Use original ticker name
                 "RSI": round(data['RSI'].iloc[-1], 2),
                 "Close": round(data['Close'].iloc[-1], 2),
                 "SMA": round(data['SMA'].iloc[-1], 2),
@@ -87,4 +85,3 @@ if flagged_stocks:
     st.download_button("Download Results", csv, "flagged_stocks.csv", "text/csv")
 else:
     st.write("No stocks matched the criteria.")
-
