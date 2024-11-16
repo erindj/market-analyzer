@@ -8,8 +8,8 @@ def calculate_rsi(data, window=14):
     delta = data['Close'].diff()
     gain = np.where(delta > 0, delta, 0)
     loss = np.where(delta < 0, -delta, 0)
-    avg_gain = pd.Series(gain).rolling(window=window, min_periods=1).mean()
-    avg_loss = pd.Series(loss).rolling(window=window, min_periods=1).mean()
+    avg_gain = pd.Series(gain, index=data.index).rolling(window=window, min_periods=1).mean()
+    avg_loss = pd.Series(loss, index=data.index).rolling(window=window, min_periods=1).mean()
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
     return rsi
@@ -44,6 +44,10 @@ for ticker in tickers:
     try:
         # Fetch stock data
         data = yf.download(ticker, period="6mo", progress=False)
+        if data.empty:
+            raise ValueError(f"No data found for {ticker}")
+
+        # Calculate RSI and SMA
         data['RSI'] = calculate_rsi(data)
         data['SMA'] = calculate_sma(data, window=sma_window)
 
