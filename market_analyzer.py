@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
+from pandas.tseries.offsets import BDay
 
 # Function to calculate RSI
 def calculate_rsi(data, window=14):
@@ -47,6 +48,10 @@ else:
 
 st.sidebar.write(f"Analyzing {len(tickers)} stocks...")
 
+# Get the last business day
+last_business_day = pd.Timestamp.today() - BDay(1)
+last_business_day_str = last_business_day.strftime('%Y-%m-%d')
+
 # Analyze stocks
 flagged_stocks = []
 for ticker in tickers:
@@ -54,10 +59,13 @@ for ticker in tickers:
         # Preprocess ticker
         formatted_ticker = preprocess_ticker(ticker)
 
-        # Fetch stock data
-        data = yf.download(formatted_ticker, period="6mo", progress=False)
+        # Fetch stock data up to the last business day
+        data = yf.download(formatted_ticker, start="2023-01-01", end=last_business_day_str, progress=False)
+
+        # Skip processing if data is empty
         if data.empty:
-            raise ValueError(f"No data available for {formatted_ticker}")
+            st.write(f"No data available for {ticker} (market might be closed or ticker invalid).")
+            continue
 
         # Calculate RSI and SMA
         data['RSI'] = calculate_rsi(data)
