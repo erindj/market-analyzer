@@ -21,7 +21,7 @@ def calculate_rsi(data, window=14):
 def calculate_sma(data, window=200):
     if 'Close' not in data or data['Close'].empty:
         raise ValueError("Invalid data: 'Close' column missing or empty")
-    return data['Close'].rolling(window=window).mean()
+    return data['Close'].rolling(window=window).mean().rename("SMA")
 
 # Preprocess tickers for Yahoo Finance compatibility
 def preprocess_ticker(ticker):
