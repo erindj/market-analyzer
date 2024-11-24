@@ -56,7 +56,6 @@ st.sidebar.write(f"Analyzing {len(tickers)} stocks...")
 print(f"Analyzing tickers: {tickers}")
 flagged_stocks = []
 
-# Analyze each ticker
 for ticker in tqdm(tickers):
     try:
         # Fetch stock data
@@ -66,20 +65,24 @@ for ticker in tqdm(tickers):
             print(f"No data available for {ticker}")
             continue
 
-        # Ensure Close column exists
-        if "Close" not in data.columns:
+        # Flatten MultiIndex columns if needed
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = ['_'.join(col).strip() for col in data.columns]
+
+        # Access the 'Close' column
+        close_column = f"Close_{ticker}"
+        if close_column not in data.columns:
             raise ValueError(f"Missing 'Close' column for {ticker}")
+        data['Close'] = data[close_column]
+
+        # Ensure 'Close' column is 1-dimensional
+        data['Close'] = data['Close'].squeeze()
 
         # Calculate RSI and SMA
         data['RSI'] = calculate_rsi(data)
         data['SMA'] = calculate_sma(data, window=sma_window)
 
-        # Ensure RSI and SMA calculations are valid
-        if data['RSI'].isna().all():
-            print(f"Insufficient data for RSI calculation for {ticker}")
-            continue
-
-        # Flag stocks based on criteria
+        # Check latest values
         latest_rsi = data['RSI'].iloc[-1]
         latest_close = data['Close'].iloc[-1]
         latest_sma = data['SMA'].iloc[-1]
@@ -91,8 +94,7 @@ for ticker in tqdm(tickers):
                 "Close": round(latest_close, 2),
                 "SMA": round(latest_sma, 2),
             })
-        else:
-            print(f"{ticker} did not match criteria. RSI: {latest_rsi}, Close: {latest_close}, SMA: {latest_sma}")
+
     except Exception as e:
         print(f"Error analyzing {ticker}: {e}")
 
