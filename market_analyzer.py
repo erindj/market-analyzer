@@ -5,9 +5,6 @@ import numpy as np
 from pandas.tseries.offsets import BDay
 from tqdm import tqdm
 
-# Toggle verbose logging
-verbose = True  # Set to False to reduce log messages
-
 # Debug and reset `str` if overwritten
 print("Type of str at start:", type(str))
 try:
@@ -70,26 +67,23 @@ print(f"Last business day: {last_business_day_str}")
 
 # Analyze stocks
 flagged_stocks = []
-for ticker in tqdm(tickers, desc="Analyzing tickers"):
+for ticker in tqdm(tickers):
     try:
         # Preprocess ticker
         formatted_ticker = preprocess_ticker(ticker)
 
         # Fetch stock data
-        if verbose:
-            print(f"Fetching data for {formatted_ticker}...")
+        print(f"Fetching data for {formatted_ticker}...")
         data = yf.download(formatted_ticker, start="2023-01-01", end=last_business_day_str, progress=False)
 
         if data.empty:
-            if verbose:
-                print(f"No data available for {formatted_ticker}")
+            print(f"No data available for {formatted_ticker}")
             continue
 
         # Validate and fix column names if necessary
         expected_columns = ["Adj Close", "Close", "High", "Low", "Open", "Volume"]
         if not all(col in expected_columns for col in data.columns):
-            if verbose:
-                print(f"Fixing column names for {formatted_ticker}")
+            print(f"Fixing column names for {formatted_ticker}")
             data.columns = expected_columns
 
         # Ensure Close column exists
@@ -100,6 +94,11 @@ for ticker in tqdm(tickers, desc="Analyzing tickers"):
         data['RSI'] = calculate_rsi(data)
         data['SMA'] = calculate_sma(data, window=sma_window)
 
+        # Debugging: Print the calculated metrics
+        print(f"RSI for {formatted_ticker}: {data['RSI'].dropna().tail()}")
+        print(f"SMA for {formatted_ticker}: {data['SMA'].dropna().tail()}")
+        print(f"Close Price for {formatted_ticker}: {data['Close'].tail()}")
+
         # Flag stocks based on criteria
         if data['RSI'].iloc[-1] < rsi_threshold and data['Close'].iloc[-1] > data['SMA'].iloc[-1]:
             flagged_stocks.append({
@@ -108,9 +107,12 @@ for ticker in tqdm(tickers, desc="Analyzing tickers"):
                 "Close": round(data['Close'].iloc[-1], 2),
                 "SMA": round(data['SMA'].iloc[-1], 2),
             })
+        else:
+            # Debugging: Show why a stock was not flagged
+            print(f"{formatted_ticker} did not match criteria:")
+            print(f"RSI: {data['RSI'].iloc[-1]} | Close: {data['Close'].iloc[-1]} | SMA: {data['SMA'].iloc[-1]}")
     except Exception as e:
-        if verbose:
-            print(f"Error analyzing {ticker}: {e}")
+        print(f"Error analyzing {ticker}: {e}")
         st.write(f"Error analyzing {ticker}: {e}")
 
 # Display results
