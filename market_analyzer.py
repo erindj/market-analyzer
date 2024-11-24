@@ -100,3 +100,4 @@ if flagged_stocks:
     st.download_button("Download Results", csv, "flagged_stocks.csv", "text/csv")
 else:
     st.write("No stocks matched the criteria.")
+
