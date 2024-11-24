@@ -5,7 +5,7 @@ import numpy as np
 from pandas.tseries.offsets import BDay
 
 # Ensure str is not overwritten
-print("Type of str:", type(str))
+print("Type of str at start:", type(str))
 try:
     del str
 except NameError:
@@ -13,7 +13,7 @@ except NameError:
 
 # Function to calculate RSI
 def calculate_rsi(data, window=14):
-    print(f"Calculating RSI for data: {data.head()}")
+    print(f"Calculating RSI for data:\n{data.head()}")
     if 'Close' not in data or data['Close'].empty:
         raise ValueError("Invalid data: 'Close' column missing or empty")
 
@@ -28,7 +28,7 @@ def calculate_rsi(data, window=14):
 
 # Function to calculate SMA
 def calculate_sma(data, window=200):
-    print(f"Calculating SMA for data: {data.head()}")
+    print(f"Calculating SMA for data:\n{data.head()}")
     if 'Close' not in data or data['Close'].empty:
         raise ValueError("Invalid data: 'Close' column missing or empty")
     return data['Close'].rolling(window=window).mean().rename("SMA")
@@ -48,14 +48,27 @@ market_choice = st.sidebar.selectbox("Select Market", ["S&P 500", "NASDAQ"])
 rsi_threshold = st.sidebar.slider("RSI Threshold (Oversold)", 10, 50, 30)
 sma_window = st.sidebar.slider("SMA Window (days)", 50, 250, 200)
 
-# Load tickers for the chosen market
-tickers = ["AOS", "ABT", "ABBV", "ACN", "ADBE"]
+# Define tickers based on market choice
+if market_choice == "S&P 500":
+    print("Fetching S&P 500 tickers...")
+    sp500_url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    sp500_table = pd.read_html(sp500_url)[0]
+    tickers = sp500_table['Symbol'].tolist()
+else:
+    print("Using predefined NASDAQ tickers...")
+    tickers = ["AAPL", "MSFT", "GOOG", "AMZN", "META"]
+
+# Verify tickers
+if not tickers:
+    raise ValueError("Tickers list is empty. Please check the market choice or data source.")
+print(f"Tickers to analyze: {tickers}")
 
 st.sidebar.write(f"Analyzing {len(tickers)} stocks...")
 
 # Get the last business day
 last_business_day = pd.Timestamp.today() - BDay(1)
 last_business_day_str = last_business_day.strftime('%Y-%m-%d')
+print(f"Last business day: {last_business_day_str}")
 
 # Analyze stocks
 flagged_stocks = []
@@ -64,13 +77,24 @@ for ticker in tickers:
         # Preprocess ticker
         formatted_ticker = preprocess_ticker(ticker)
 
-        # Fetch stock data up to the last business day
+        # Fetch stock data
+        print(f"Fetching data for {formatted_ticker}...")
         data = yf.download(formatted_ticker, start="2023-01-01", end=last_business_day_str, progress=False)
 
-        # Skip processing if data is empty
+        # Validate data
         if data.empty:
-            st.write(f"No data available for {ticker}")
+            print(f"No data available for {formatted_ticker}")
             continue
+
+        # Fix column names if necessary
+        print(f"Columns for {formatted_ticker}: {data.columns}")
+        if not all(col in data.columns for col in ["Close", "Adj Close"]):
+            print(f"Fixing column names for {formatted_ticker}")
+            data.columns = [col.split()[0] for col in data.columns]
+
+        # Ensure Close column exists
+        if "Close" not in data.columns:
+            raise ValueError(f"Missing 'Close' column for {formatted_ticker}")
 
         # Calculate RSI and SMA
         data['RSI'] = calculate_rsi(data)
@@ -85,17 +109,19 @@ for ticker in tickers:
                 "SMA": round(data['SMA'].iloc[-1], 2),
             })
     except Exception as e:
+        print(f"Error analyzing {ticker}: {e}")
         st.write(f"Error analyzing {ticker}: {e}")
 
 # Display results
 if flagged_stocks:
     st.subheader("Flagged Stocks")
     results_df = pd.DataFrame(flagged_stocks)
+    print(f"Flagged stocks:\n{results_df}")
     st.dataframe(results_df)
 
     # Download option
     csv = results_df.to_csv(index=False)
     st.download_button("Download Results", csv, "flagged_stocks.csv", "text/csv")
 else:
+    print("No stocks matched the criteria.")
     st.write("No stocks matched the criteria.")
-
