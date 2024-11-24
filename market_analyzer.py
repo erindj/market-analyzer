@@ -4,6 +4,13 @@ import pandas as pd
 import numpy as np
 from pandas.tseries.offsets import BDay
 
+# Ensure str is not overwritten
+print("Type of str:", type(str))
+try:
+    del str
+except NameError:
+    pass
+
 # Function to calculate RSI
 def calculate_rsi(data, window=14):
     if 'Close' not in data or data['Close'].empty:
@@ -74,7 +81,7 @@ for ticker in tickers:
         # Flag stocks based on criteria
         if data['RSI'].iloc[-1] < rsi_threshold and data['Close'].iloc[-1] > data['SMA'].iloc[-1]:
             flagged_stocks.append({
-                "Ticker": ticker,  # Use original ticker name
+                "Ticker": ticker,
                 "RSI": round(data['RSI'].iloc[-1], 2),
                 "Close": round(data['Close'].iloc[-1], 2),
                 "SMA": round(data['SMA'].iloc[-1], 2),
