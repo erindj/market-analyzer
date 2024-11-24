@@ -3,17 +3,20 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from pandas.tseries.offsets import BDay
+from tqdm import tqdm
 
-# Ensure str is not overwritten
+# Toggle verbose logging
+verbose = True  # Set to False to reduce log messages
+
+# Debug and reset `str` if overwritten
 print("Type of str at start:", type(str))
 try:
-    del str
+    del str  # Reset to built-in
 except NameError:
     pass
 
 # Function to calculate RSI
 def calculate_rsi(data, window=14):
-    print(f"Calculating RSI for data:\n{data.head()}")
     if 'Close' not in data or data['Close'].empty:
         raise ValueError("Invalid data: 'Close' column missing or empty")
 
@@ -28,14 +31,12 @@ def calculate_rsi(data, window=14):
 
 # Function to calculate SMA
 def calculate_sma(data, window=200):
-    print(f"Calculating SMA for data:\n{data.head()}")
     if 'Close' not in data or data['Close'].empty:
         raise ValueError("Invalid data: 'Close' column missing or empty")
     return data['Close'].rolling(window=window).mean().rename("SMA")
 
 # Preprocess tickers for Yahoo Finance compatibility
 def preprocess_ticker(ticker):
-    print(f"Preprocessing ticker: {ticker}")
     return ticker.replace(".B", "-B").replace(".A", "-A")
 
 # Streamlit app
@@ -50,20 +51,17 @@ sma_window = st.sidebar.slider("SMA Window (days)", 50, 250, 200)
 
 # Define tickers based on market choice
 if market_choice == "S&P 500":
-    print("Fetching S&P 500 tickers...")
     sp500_url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
     sp500_table = pd.read_html(sp500_url)[0]
     tickers = sp500_table['Symbol'].tolist()
 else:
-    print("Using predefined NASDAQ tickers...")
     tickers = ["AAPL", "MSFT", "GOOG", "AMZN", "META"]
 
-# Verify tickers
 if not tickers:
-    raise ValueError("Tickers list is empty. Please check the market choice or data source.")
-print(f"Tickers to analyze: {tickers}")
+    raise ValueError("No tickers found. Please check the market choice.")
 
 st.sidebar.write(f"Analyzing {len(tickers)} stocks...")
+print(f"Analyzing tickers: {tickers}")
 
 # Get the last business day
 last_business_day = pd.Timestamp.today() - BDay(1)
@@ -72,25 +70,27 @@ print(f"Last business day: {last_business_day_str}")
 
 # Analyze stocks
 flagged_stocks = []
-for ticker in tickers:
+for ticker in tqdm(tickers, desc="Analyzing tickers"):
     try:
         # Preprocess ticker
         formatted_ticker = preprocess_ticker(ticker)
 
         # Fetch stock data
-        print(f"Fetching data for {formatted_ticker}...")
+        if verbose:
+            print(f"Fetching data for {formatted_ticker}...")
         data = yf.download(formatted_ticker, start="2023-01-01", end=last_business_day_str, progress=False)
 
-        # Validate data
         if data.empty:
-            print(f"No data available for {formatted_ticker}")
+            if verbose:
+                print(f"No data available for {formatted_ticker}")
             continue
 
-        # Fix column names if necessary
-        print(f"Columns for {formatted_ticker}: {data.columns}")
-        if not all(col in data.columns for col in ["Close", "Adj Close"]):
-            print(f"Fixing column names for {formatted_ticker}")
-            data.columns = [col.split()[0] for col in data.columns]
+        # Validate and fix column names if necessary
+        expected_columns = ["Adj Close", "Close", "High", "Low", "Open", "Volume"]
+        if not all(col in expected_columns for col in data.columns):
+            if verbose:
+                print(f"Fixing column names for {formatted_ticker}")
+            data.columns = expected_columns
 
         # Ensure Close column exists
         if "Close" not in data.columns:
@@ -109,19 +109,19 @@ for ticker in tickers:
                 "SMA": round(data['SMA'].iloc[-1], 2),
             })
     except Exception as e:
-        print(f"Error analyzing {ticker}: {e}")
+        if verbose:
+            print(f"Error analyzing {ticker}: {e}")
         st.write(f"Error analyzing {ticker}: {e}")
 
 # Display results
 if flagged_stocks:
     st.subheader("Flagged Stocks")
     results_df = pd.DataFrame(flagged_stocks)
-    print(f"Flagged stocks:\n{results_df}")
     st.dataframe(results_df)
 
-    # Download option
     csv = results_df.to_csv(index=False)
     st.download_button("Download Results", csv, "flagged_stocks.csv", "text/csv")
 else:
     print("No stocks matched the criteria.")
     st.write("No stocks matched the criteria.")
+
