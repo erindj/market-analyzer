@@ -13,6 +13,7 @@ except NameError:
 
 # Function to calculate RSI
 def calculate_rsi(data, window=14):
+    print(f"Calculating RSI for data: {data.head()}")
     if 'Close' not in data or data['Close'].empty:
         raise ValueError("Invalid data: 'Close' column missing or empty")
 
@@ -27,12 +28,14 @@ def calculate_rsi(data, window=14):
 
 # Function to calculate SMA
 def calculate_sma(data, window=200):
+    print(f"Calculating SMA for data: {data.head()}")
     if 'Close' not in data or data['Close'].empty:
         raise ValueError("Invalid data: 'Close' column missing or empty")
     return data['Close'].rolling(window=window).mean().rename("SMA")
 
 # Preprocess tickers for Yahoo Finance compatibility
 def preprocess_ticker(ticker):
+    print(f"Preprocessing ticker: {ticker}")
     return ticker.replace(".B", "-B").replace(".A", "-A")
 
 # Streamlit app
@@ -46,12 +49,7 @@ rsi_threshold = st.sidebar.slider("RSI Threshold (Oversold)", 10, 50, 30)
 sma_window = st.sidebar.slider("SMA Window (days)", 50, 250, 200)
 
 # Load tickers for the chosen market
-if market_choice == "S&P 500":
-    sp500_url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    sp500_table = pd.read_html(sp500_url)[0]
-    tickers = sp500_table['Symbol'].tolist()
-else:
-    tickers = ["AAPL", "MSFT", "GOOG", "AMZN", "META"]  # Sample NASDAQ tickers
+tickers = ["AOS", "ABT", "ABBV", "ACN", "ADBE"]
 
 st.sidebar.write(f"Analyzing {len(tickers)} stocks...")
 
